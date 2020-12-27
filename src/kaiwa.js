@@ -1,7 +1,8 @@
 /**
+ * Minimalist 2D game engine for KaiOS development
  * @author Victor Zegarra
- * @date 2/10/2020
- * @version 1.8
+ * @date 27/12/2020
+ * @version 1.11
  */
 
 var GAME_FPS = 25;
@@ -33,11 +34,13 @@ function loadImage(filename, callback) {
     return image;
 }
 
-function initGame(canvas_id, game_width, game_height, smooth) {
+function createGame(canvas_id, game_width, game_height, smooth) {
     currstage = new KaiStage();   // Dummy Stage
 
     WINDOW_WIDTH  = window.innerWidth;
     WINDOW_HEIGHT = window.innerHeight;
+
+//    alert("Stage size: " + WINDOW_WIDTH + "x" + WINDOW_HEIGHT);
      
     GAME_WIDTH  = WINDOW_WIDTH;
     GAME_HEIGHT = WINDOW_HEIGHT
@@ -60,6 +63,13 @@ function initGame(canvas_id, game_width, game_height, smooth) {
 
     document.addEventListener("keydown", keyDownListener, false);
     document.addEventListener("keyup", keyUpListener, false);
+
+    document.addEventListener("mousedown", mouseDownListener, false);
+    // document.addEventListener("mousemove", mouseMoveListener, false);
+    document.addEventListener("mouseup", mouseUpListener, false);
+    document.addEventListener("touchstart", touchStartListener, {passive:false});
+    // document.addEventListener("touchmove", touchMoveListener, false);
+    document.addEventListener("touchend", touchEndListener, {passive:false});
     
     SCALE_WIDTH  = canvas.width  / GAME_WIDTH;
     SCALE_HEIGHT = canvas.height / GAME_HEIGHT;
@@ -114,14 +124,80 @@ function keyUpListener(event) {
     currstage.keyUp(event);
 }
 
+function mouseDownListener(event) {
+    var x = Math.floor(event.clientX / SCALE_WIDTH);
+    var y = Math.floor(event.clientY / SCALE_HEIGHT);
+    currstage.touchDown(x,y);
+}
+
+function mouseUpListener(event) {
+    var x = event.clientX / SCALE_WIDTH;
+    var y = event.clientY / SCALE_HEIGHT;
+    currstage.touchUp(x,y);
+}
+
+function touchStartListener(event) {
+    event.preventDefault();
+    var touch = event.changedTouches[0];
+    var x = Math.floor(touch.pageX / SCALE_WIDTH);
+    var y = Math.floor(touch.pageY / SCALE_HEIGHT);
+    currstage.touchDown(x,y);
+}
+
+function touchEndListener(event) {
+    event.preventDefault();
+    var touch = event.changedTouches[0];
+    var x = Math.floor(touch.pageX / SCALE_WIDTH);
+    var y = Math.floor(touch.pageY / SCALE_HEIGHT);
+    currstage.touchUp(x,y);
+}
+
+// function mouseDownListener(event) {
+//     var x = (event.clientX - canvasX) / SCALE_WIDTH;
+//     var y = (event.clientY - canvasY) / SCALE_HEIGHT;
+//     currstage.ontouch(this, PRESSED, x, y);
+// }
+// 
+// function mouseMoveListener(event) {
+//     var x = (event.clientX - canvasX) / SCALE_WIDTH;
+//     var y = (event.clientY - canvasY) / SCALE_HEIGHT;
+//     currstage.ontouch(this, MOVED, x, y);
+// }
+// 
+// function mouseUpListener(event) {
+//     var x = (event.clientX - canvasX) / SCALE_WIDTH;
+//     var y = (event.clientY - canvasY) / SCALE_HEIGHT;
+//     currstage.ontouch(this, RELEASED, x, y);
+// }
+// 
+// function touchStartListener(event) {
+//     event.preventDefault();
+//     var touch = event.changedTouches[0];
+//     currstage.ontouch(this, PRESSED, touch.pageX, touch.pageY);
+// }
+// 
+// function touchMoveListener(event) {
+//     event.preventDefault();
+//     var touch = event.changedTouches[0];
+//     currstage.ontouch(this, MOVED, touch.pageX, touch.pageY);
+// }
+// 
+// function touchEndListener(event) {
+//     event.preventDefault();
+//     var touch = event.changedTouches[0];
+//     currstage.ontouch(this, RELEASED, touch.pageX, touch.pageY);
+// }
+
 
 /*
     KaiGame
 */
 
-function KaiGame() {}
-
-KaiGame.prototype.stages = [];
+function KaiGame() {
+    this.stages    = [];
+    this.stageTags = [];
+    this.nPreload  = 0;
+}
 
 KaiGame.prototype.preload = function(stage, callback) {
     var loadedCounter = stage.preloadImages.length;
@@ -139,33 +215,41 @@ KaiGame.prototype.preload = function(stage, callback) {
 
 KaiGame.prototype.addStage = function(tag,stage) {
     if(stage instanceof KaiStage) {
+        this.stageTags.push(tag);
+        this.nPreload++;
+        stage.tag = tag;
         stage.preload();
         this.preload(stage, () => {
-            stage.create();
-            stage.$update = KaiStage.prototype.update; // $update = super.update
-            stage.$render = KaiStage.prototype.render; // $render = super.render
+            this.nPreload--;
             this.stages[tag] = stage;
-            stage.isReady = true;
         });
     }
 }
 
-KaiGame.prototype.gotoStage = function(tag) {
-    let timeout = 20;
-    id = setInterval(() => {
+KaiGame.prototype.startStage = function(tag,param) {
+    if(this.nPreload > 0) {
+        this.createStages(tag,param);
+    } else {
         let stage = this.stages[tag];
-        if(stage) {
-            if(stage instanceof KaiStage) {
-                clearInterval(id);
-                currstage = stage;
-                currstage.start();
-                window.requestAnimationFrame(main_loop);
+        if(stage instanceof KaiStage) {
+            currstage = stage;
+            currstage.start(param);
+            window.requestAnimationFrame(main_loop);
+        }
+    }
+}
+
+KaiGame.prototype.createStages = function(tag,param) {
+    let id = setInterval(() => {
+        if(this.nPreload <= 0) {
+            clearInterval(id);
+            for(let tag of this.stageTags) {
+                let stage = this.stages[tag];
+                stage.create();
+                stage.$update = KaiStage.prototype.update; // $update = super.update
+                stage.$render = KaiStage.prototype.render; // $render = super.render
             }
-        } else {
-            timeout--;
-            if(timeout == 0) {
-                clearInterval(id);
-            }
+            this.startStage(tag,param);
         }
     },100);
 }
@@ -264,6 +348,14 @@ KaiDrawable.prototype.update = function() {}
 */
 
 function KaiImage(image) {
+    if(image instanceof Image) {
+        this.setImage(image);
+    }
+}
+
+KaiImage.prototype = Object.create(KaiDrawable.prototype);
+
+KaiImage.prototype.setImage = function(image) {
     this.image = image;
     this.x  = 0;
     this.y  = 0;
@@ -274,8 +366,6 @@ function KaiImage(image) {
     this.cwidth  = this.width;
     this.cheight = this.height;
 }
-
-KaiImage.prototype = Object.create(KaiDrawable.prototype);
 
 KaiImage.prototype.render = function(context) {
     context.drawImage(this.image, this.x, this.y);        
@@ -319,7 +409,7 @@ KaiSprite = function(image, frameWidth, frameHeight) {
     this.frameCount = this.cols*this.rows;
     this.frames = new Array(this.frameCount);
     for(let idx=0; idx<this.frameCount; idx++) {
-        this.frames[idx] = new Array(8);
+        this.frames[idx] = new Array(12);
     }
     idx = 0;
     for(var row=0, ofsy=0; row < this.rows; row++, ofsy+=this.frameHeight) {
@@ -332,6 +422,10 @@ KaiSprite = function(image, frameWidth, frameHeight) {
             this.frames[idx][5] = 0;
             this.frames[idx][6] = this.frameWidth;
             this.frames[idx][7] = this.frameHeight;
+            this.frames[idx][8] = 0;
+            this.frames[idx][9] = 0;
+            this.frames[idx][10] = this.frameWidth;
+            this.frames[idx][11] = this.frameHeight;
             idx++;
         }
     }
@@ -414,8 +508,12 @@ KaiSprite.prototype.render = function(context) {
                 this.frames[this.frameIndex][2],this.frames[this.frameIndex][3]);
 
         // /* for debugging */
-        // context.fillStyle="#00FF00";
-        // context.fillRect(this.cx,this.cy,this.cwidth,this.cheight);
+        // context.strokeStyle="#00FF00";
+        // context.strokeRect(this.cx,this.cy,this.cwidth,this.cheight);
+        // if(typeof this.coll !== 'undefined') {
+        //     context.strokeStyle="#00FFFF";
+        //     context.strokeRect(this.coll.x,this.coll.y,this.coll.width,this.coll.height);
+        // }
     }
 }
 
@@ -450,12 +548,50 @@ KaiSprite.prototype.setCollision = function(x, y, width, height) {
     this.updateHitBox();
 }
 
+KaiSprite.prototype.setCollRect = function(x, y, width, height) {
+    for(var idx=0; idx < this.frameCount; idx++) {
+        this.frames[idx][8]  = x;
+        this.frames[idx][9]  = y;
+        this.frames[idx][10] = width;
+        this.frames[idx][11] = height;
+    }
+    if(typeof this.coll === 'undefined') {
+        this.coll = new KaiRect();
+    }
+    this.updateHitBox();
+}
+
+KaiSprite.prototype.setCollisionIndex = function(idx, x, y, width, height) {
+    this.frames[idx][4] = x;
+    this.frames[idx][5] = y;
+    this.frames[idx][6] = width;
+    this.frames[idx][7] = height;
+    this.updateHitBox();
+}
+
+KaiSprite.prototype.setCollRectIndex = function(idx, x, y, width, height) {
+    this.frames[idx][8]  = x;
+    this.frames[idx][9]  = y;
+    this.frames[idx][10] = width;
+    this.frames[idx][11] = height;
+    if(typeof this.coll === 'undefined') {
+        this.coll = new KaiRect();
+    }
+    this.updateHitBox();
+}
+
 KaiSprite.prototype.updateHitBox = function() {
     if(this.frameIndex >= 0) {
         this.cx = this.x + this.frames[this.frameIndex][4];
         this.cy = this.y + this.frames[this.frameIndex][5];
         this.cwidth  = this.frames[this.frameIndex][6];
         this.cheight = this.frames[this.frameIndex][7];
+        if(typeof this.coll !== 'undefined') {
+            this.coll.x = this.x + this.frames[this.frameIndex][8];
+            this.coll.y = this.y + this.frames[this.frameIndex][9];
+            this.coll.width  = this.frames[this.frameIndex][10];
+            this.coll.height = this.frames[this.frameIndex][11];
+        }
     }
 }
 
@@ -463,11 +599,18 @@ KaiSprite.prototype.inBounds = function(x,y) {
     return ( (x >= this.cx) && (x < (this.cx+this.cwidth)) && (y >= this.cy) && (y < (this.cy+this.cheight)));
 }
 
-KaiSprite.prototype.collidesWith = function(rect) {
-    if( (this.cx + this.cwidth) <= rect.cx ) return false;
-    if( this.cx >= (rect.cx + rect.cwidth) ) return false;
-    if( (this.cy + this.cheight) <= rect.cy ) return false;
-    return this.cy < (rect.cy + rect.cheight);
+KaiSprite.prototype.collidesDrawable = function(drawable) {
+    if( (this.cx + this.cwidth) <= drawable.cx ) return false;
+    if( this.cx >= (drawable.cx + drawable.cwidth) ) return false;
+    if( (this.cy + this.cheight) <= drawable.cy ) return false;
+    return this.cy < (drawable.cy + drawable.cheight);
+}
+
+KaiSprite.prototype.collidesRect = function(rect) {
+    if( (this.cx + this.cwidth) <= rect.x ) return false;
+    if( this.cx >= (rect.x + rect.width) ) return false;
+    if( (this.cy + this.cheight) <= rect.y ) return false;
+    return this.cy < (rect.y + rect.height);
 }
 
 
@@ -535,19 +678,25 @@ KaiNumber.prototype.posXY = function(x,y) {
     if(this.centerY) {
         this.y -= (this.height >> 1);
     }
+    // if(this.parent) {
+    //     this.px = this.ax - this.parent.x;
+    //     this.py = this.ay - this.parent.y;
+    // }
 }
 
 
 KaiNumber.prototype.render = function(context) {
-    let count = this.value.length;
-    let ofsX  = this.x;
-    for(let idx=0; idx<count; idx++) {
-        let frame = this.value.charCodeAt(idx) - 48;
-        context.drawImage(this.image,this.frames[frame][0],this.frames[frame][1],
-            this.frames[frame][2],this.frames[frame][3],ofsX,this.y,
-            this.frames[frame][2],this.frames[frame][3]);
-        ofsX += this.frames[frame][2] + this.spacing;        
-    }
+    // if(this.isVisible) {
+        let count = this.value.length;
+        let ofsX  = this.x;
+        for(let idx=0; idx<count; idx++) {
+            let frame = this.value.charCodeAt(idx) - 48;
+            context.drawImage(this.image,this.frames[frame][0],this.frames[frame][1],
+                this.frames[frame][2],this.frames[frame][3],ofsX,this.y,
+                this.frames[frame][2],this.frames[frame][3]);
+            ofsX += this.frames[frame][2] + this.spacing;        
+        }
+    // }
 }
 
 
@@ -631,8 +780,8 @@ KaiRunnable.prototype.run = function(sender) {}
 function KaiLayer() {
     this.x = 0;
     this.y = 0;
-    this.width  = 0;
-    this.height = 0;
+    this.width  = 0;//parent.width;
+    this.height = 0;//parent.height;
 }
 
 KaiLayer.prototype = Object.create(KaiDrawable.prototype);
@@ -735,6 +884,7 @@ KaiLayer.prototype.posXY = function(x,y) {
 */
 
 function KaiStage() {
+    this.state = 0;
     this.drawables     = [];
     this.updateables   = [];
     this.preloadImages = [];
@@ -759,5 +909,9 @@ KaiStage.prototype.create = function() {}
 KaiStage.prototype.keyDown = function(event) {}
 
 KaiStage.prototype.keyUp = function(event) {}
+
+KaiStage.prototype.touchDown = function(x,y) {}
+
+KaiStage.prototype.touchUp = function(x,y) {}
 
 KaiStage.prototype.onBack = function() {}
