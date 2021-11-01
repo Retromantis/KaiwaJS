@@ -1,8 +1,8 @@
 /**
  * Minimalist 2D game engine for KaiOS development
  * @author Victor Zegarra
- * @date 27/12/2020
- * @version 1.11
+ * @date 01/11/2021
+ * @version 1.14
  */
 
 var GAME_FPS = 25;
@@ -34,22 +34,22 @@ function loadImage(filename, callback) {
     return image;
 }
 
-function createGame(canvas_id, game_width, game_height, smooth) {
+function createGame(canvas_id, game_wdt, game_hgt, smooth) {
     currstage = new KaiStage();   // Dummy Stage
 
-    WINDOW_WIDTH  = window.innerWidth;
-    WINDOW_HEIGHT = window.innerHeight;
+    WINDOW_WDT = window.innerWidth;
+    WINDOW_HGT = window.innerHeight;
 
-//    alert("Stage size: " + WINDOW_WIDTH + "x" + WINDOW_HEIGHT);
+//    alert("Stage size: " + WINDOW_WDT + "x" + WINDOW_HGT);
      
-    GAME_WIDTH  = WINDOW_WIDTH;
-    GAME_HEIGHT = WINDOW_HEIGHT
+    GAME_WDT = WINDOW_WDT;
+    GAME_HGT = WINDOW_HGT
 
-    if(game_width) {
-        GAME_WIDTH = game_width;
+    if(game_wdt) {
+        GAME_WDT = game_wdt;
     }
-    if(game_height) {
-        GAME_HEIGHT = game_height;
+    if(game_hgt) {
+        GAME_HGT = game_hgt;
     }
 
     if(canvas_id) {
@@ -57,8 +57,8 @@ function createGame(canvas_id, game_width, game_height, smooth) {
     } else {
         canvas = document.createElement('canvas');
     }
-    canvas.width  = WINDOW_WIDTH;
-    canvas.height = WINDOW_HEIGHT;
+    canvas.width  = WINDOW_WDT;
+    canvas.height = WINDOW_HGT;
     canvas.style.background = "#000000";
 
     document.addEventListener("keydown", keyDownListener, false);
@@ -71,11 +71,11 @@ function createGame(canvas_id, game_width, game_height, smooth) {
     // document.addEventListener("touchmove", touchMoveListener, false);
     document.addEventListener("touchend", touchEndListener, {passive:false});
     
-    SCALE_WIDTH  = canvas.width  / GAME_WIDTH;
-    SCALE_HEIGHT = canvas.height / GAME_HEIGHT;
+    SCALE_WDT = canvas.width  / GAME_WDT;
+    SCALE_HGT = canvas.height / GAME_HGT;
     
     ctx = canvas.getContext('2d');
-    ctx.scale(SCALE_WIDTH,SCALE_HEIGHT);
+    ctx.scale(SCALE_WDT,SCALE_HGT);
 
     if(smooth == false) {
         ctx.imageSmoothingEnabled    = false;
@@ -125,48 +125,48 @@ function keyUpListener(event) {
 }
 
 function mouseDownListener(event) {
-    var x = Math.floor(event.clientX / SCALE_WIDTH);
-    var y = Math.floor(event.clientY / SCALE_HEIGHT);
+    var x = Math.floor(event.clientX / SCALE_WDT);
+    var y = Math.floor(event.clientY / SCALE_HGT);
     currstage.touchDown(x,y);
 }
 
 function mouseUpListener(event) {
-    var x = event.clientX / SCALE_WIDTH;
-    var y = event.clientY / SCALE_HEIGHT;
+    var x = event.clientX / SCALE_WDT;
+    var y = event.clientY / SCALE_HGT;
     currstage.touchUp(x,y);
 }
 
 function touchStartListener(event) {
     event.preventDefault();
     var touch = event.changedTouches[0];
-    var x = Math.floor(touch.pageX / SCALE_WIDTH);
-    var y = Math.floor(touch.pageY / SCALE_HEIGHT);
+    var x = Math.floor(touch.pageX / SCALE_WDT);
+    var y = Math.floor(touch.pageY / SCALE_HGT);
     currstage.touchDown(x,y);
 }
 
 function touchEndListener(event) {
     event.preventDefault();
     var touch = event.changedTouches[0];
-    var x = Math.floor(touch.pageX / SCALE_WIDTH);
-    var y = Math.floor(touch.pageY / SCALE_HEIGHT);
+    var x = Math.floor(touch.pageX / SCALE_WDT);
+    var y = Math.floor(touch.pageY / SCALE_HGT);
     currstage.touchUp(x,y);
 }
 
 // function mouseDownListener(event) {
-//     var x = (event.clientX - canvasX) / SCALE_WIDTH;
-//     var y = (event.clientY - canvasY) / SCALE_HEIGHT;
+//     var x = (event.clientX - canvasX) / SCALE_WDT;
+//     var y = (event.clientY - canvasY) / SCALE_HGT;
 //     currstage.ontouch(this, PRESSED, x, y);
 // }
 // 
 // function mouseMoveListener(event) {
-//     var x = (event.clientX - canvasX) / SCALE_WIDTH;
-//     var y = (event.clientY - canvasY) / SCALE_HEIGHT;
+//     var x = (event.clientX - canvasX) / SCALE_WDT;
+//     var y = (event.clientY - canvasY) / SCALE_HGT;
 //     currstage.ontouch(this, MOVED, x, y);
 // }
 // 
 // function mouseUpListener(event) {
-//     var x = (event.clientX - canvasX) / SCALE_WIDTH;
-//     var y = (event.clientY - canvasY) / SCALE_HEIGHT;
+//     var x = (event.clientX - canvasX) / SCALE_WDT;
+//     var y = (event.clientY - canvasY) / SCALE_HGT;
 //     currstage.ontouch(this, RELEASED, x, y);
 // }
 // 
@@ -218,6 +218,8 @@ KaiGame.prototype.addStage = function(tag,stage) {
         this.stageTags.push(tag);
         this.nPreload++;
         stage.tag = tag;
+        stage.x = 0;
+        stage.y = 0;
         stage.preload();
         this.preload(stage, () => {
             this.nPreload--;
@@ -228,7 +230,7 @@ KaiGame.prototype.addStage = function(tag,stage) {
 
 KaiGame.prototype.startStage = function(tag,param) {
     if(this.nPreload > 0) {
-        this.createStages(tag,param);
+        this.createStage(tag,param);
     } else {
         let stage = this.stages[tag];
         if(stage instanceof KaiStage) {
@@ -239,7 +241,7 @@ KaiGame.prototype.startStage = function(tag,param) {
     }
 }
 
-KaiGame.prototype.createStages = function(tag,param) {
+KaiGame.prototype.createStage = function(tag,param) {
     let id = setInterval(() => {
         if(this.nPreload <= 0) {
             clearInterval(id);
@@ -314,7 +316,7 @@ KaiDrawable.prototype = Object.create(KaiRect.prototype);
 // if visible then draw it
 KaiDrawable.prototype.isVisible = true;
 
-KaiDrawable.prototype.posXY = function(x, y) {
+KaiDrawable.prototype.position = function(x, y) {
     this.lx = this.ax;
     this.x = this.ax = x;
     if(this.centerX) {
@@ -334,8 +336,8 @@ KaiDrawable.prototype.posXY = function(x, y) {
     }
 }
     
-KaiDrawable.prototype.moveXY = function(x, y) {
-    this.posXY(this.ax + x, this.ay + y);
+KaiDrawable.prototype.move = function(x, y) {
+    this.position(this.ax + x, this.ay + y);
 }
 
 KaiDrawable.prototype.render = function(context) {}
@@ -411,22 +413,22 @@ KaiSprite = function(image, frameWidth, frameHeight) {
     for(let idx=0; idx<this.frameCount; idx++) {
         this.frames[idx] = new Array(12);
     }
-    idx = 0;
+    let ndx = 0;
     for(var row=0, ofsy=0; row < this.rows; row++, ofsy+=this.frameHeight) {
         for(var col=0, ofsx=0; col < this.cols; col++, ofsx+=this.frameWidth) {
-            this.frames[idx][0] = ofsx;
-            this.frames[idx][1] = ofsy;
-            this.frames[idx][2] = this.frameWidth;
-            this.frames[idx][3] = this.frameHeight;
-            this.frames[idx][4] = 0;
-            this.frames[idx][5] = 0;
-            this.frames[idx][6] = this.frameWidth;
-            this.frames[idx][7] = this.frameHeight;
-            this.frames[idx][8] = 0;
-            this.frames[idx][9] = 0;
-            this.frames[idx][10] = this.frameWidth;
-            this.frames[idx][11] = this.frameHeight;
-            idx++;
+            this.frames[ndx][0] = ofsx;
+            this.frames[ndx][1] = ofsy;
+            this.frames[ndx][2] = this.frameWidth;
+            this.frames[ndx][3] = this.frameHeight;
+            this.frames[ndx][4] = 0;
+            this.frames[ndx][5] = 0;
+            this.frames[ndx][6] = this.frameWidth;
+            this.frames[ndx][7] = this.frameHeight;
+            // this.frames[idx][8] = 0;
+            // this.frames[idx][9] = 0;
+            // this.frames[idx][10] = this.frameWidth;
+            // this.frames[idx][11] = this.frameHeight;
+            ndx++;
         }
     }
         
@@ -447,8 +449,9 @@ KaiSprite.prototype.getFrameHeight = function(){
     return this.frames[this.frameIndex][3];
 }
 
-KaiSprite.prototype.setAnimation = function(animation, delay, loop) {
-    this.frameAnimLoop = loop;
+KaiSprite.prototype.setAnimation = function(animation, delay, loop, tag) {
+    this.frameAnimLoop  = loop;
+    this.frameAnimTag   = tag;
     this.frameAnimIndex = 0;
     if(animation == null) {
         this.frameAnim = new Array(this.frameCount);
@@ -459,19 +462,20 @@ KaiSprite.prototype.setAnimation = function(animation, delay, loop) {
         this.frameAnim = animation;
     }
     this.frameIndex = this.frameAnim[this.frameAnimIndex];
-    this.updateHitBox();
+    this.updateCollider();
     this.bAnimated = this.frameAnim.length > 1;
     this.frameAnimDelay = delay;
 }
     
 KaiSprite.prototype.setFrame = function(index, fromSeq) {
-    if(fromSeq && this.frameAnim != null) {
+    // if(fromSeq && this.frameAnim != null) {
+    if(this.frameAnim) {
         this.frameAnimIndex = index;
         this.frameIndex = this.frameAnim[this.frameAnimIndex];
     } else {
         this.frameIndex = index;
     }
-    this.updateHitBox();
+    this.updateCollider();
 }
 
 KaiSprite.prototype.getFrame = function(fromAnim) {
@@ -489,17 +493,17 @@ KaiSprite.prototype.animate = function() {
             } else if(this.frameAnimLoop) {
                 this.frameAnimIndex = 0;
             } else {
-                this.onEndAnimation(this.frameAnim);
+                this.onEndAnimation(this.frameAnimTag);
             }
             this.frameIndex = this.frameAnim[this.frameAnimIndex];
-            this.updateHitBox();
+            this.updateCollider();
         } else {
             this.frameAnimCount++;
         }
     }
 }
     
-KaiSprite.prototype.onEndAnimation = function(animation) {}
+KaiSprite.prototype.onEndAnimation = function(tag) {}
 
 KaiSprite.prototype.render = function(context) {
     if(this.isVisible && this.frameIndex >= 0) {
@@ -510,6 +514,7 @@ KaiSprite.prototype.render = function(context) {
         // /* for debugging */
         // context.strokeStyle="#00FF00";
         // context.strokeRect(this.cx,this.cy,this.cwidth,this.cheight);
+        
         // if(typeof this.coll !== 'undefined') {
         //     context.strokeStyle="#00FFFF";
         //     context.strokeRect(this.coll.x,this.coll.y,this.coll.width,this.coll.height);
@@ -519,18 +524,19 @@ KaiSprite.prototype.render = function(context) {
 
 KaiSprite.prototype.update = function() {}
 
-KaiSprite.prototype.posXY = function(x,y) {
+KaiSprite.prototype.position = function(x,y) {
+    let frameIndex = this.frameIndex < 0 ? 0 : this.frameIndex;
     this.lx = this.ax;
     this.x = this.ax = x;
     if(this.centerX) {
-        this.x -= (this.frames[this.frameIndex][2] >> 1);
+        this.x -= (this.frames[frameIndex][2] >> 1);
     }
     this.ly = this.ay;
     this.y = this.ay = y;
     if(this.centerY) {
-        this.y -= (this.frames[this.frameIndex][3] >> 1);
+        this.y -= (this.frames[frameIndex][3] >> 1);
     }
-    this.updateHitBox();
+    this.updateCollider();
 
     if(this.parent) {
         this.px = this.ax - this.parent.x;
@@ -538,68 +544,67 @@ KaiSprite.prototype.posXY = function(x,y) {
     }
 }
 
-KaiSprite.prototype.setCollision = function(x, y, width, height) {
+KaiSprite.prototype.setCollider = function(x, y, width, height) {
     for(var idx=0; idx < this.frameCount; idx++) {
         this.frames[idx][4] = x;
         this.frames[idx][5] = y;
         this.frames[idx][6] = width;
         this.frames[idx][7] = height;
     }
-    this.updateHitBox();
+    this.updateCollider();
 }
 
-KaiSprite.prototype.setCollRect = function(x, y, width, height) {
-    for(var idx=0; idx < this.frameCount; idx++) {
-        this.frames[idx][8]  = x;
-        this.frames[idx][9]  = y;
-        this.frames[idx][10] = width;
-        this.frames[idx][11] = height;
-    }
-    if(typeof this.coll === 'undefined') {
-        this.coll = new KaiRect();
-    }
-    this.updateHitBox();
-}
+// KaiSprite.prototype.setCollRect = function(x, y, width, height) {
+//     for(var idx=0; idx < this.frameCount; idx++) {
+//         this.frames[idx][8]  = x;
+//         this.frames[idx][9]  = y;
+//         this.frames[idx][10] = width;
+//         this.frames[idx][11] = height;
+//     }
+//     if(typeof this.coll === 'undefined') {
+//         this.coll = new KaiRect();
+//     }
+//     this.updateCollider();
+// }
 
-KaiSprite.prototype.setCollisionIndex = function(idx, x, y, width, height) {
+KaiSprite.prototype.setColliderIndex = function(idx, x, y, width, height) {
     this.frames[idx][4] = x;
     this.frames[idx][5] = y;
     this.frames[idx][6] = width;
     this.frames[idx][7] = height;
-    this.updateHitBox();
+    this.updateCollider();
 }
 
-KaiSprite.prototype.setCollRectIndex = function(idx, x, y, width, height) {
-    this.frames[idx][8]  = x;
-    this.frames[idx][9]  = y;
-    this.frames[idx][10] = width;
-    this.frames[idx][11] = height;
-    if(typeof this.coll === 'undefined') {
-        this.coll = new KaiRect();
-    }
-    this.updateHitBox();
-}
+// KaiSprite.prototype.setCollRectIndex = function(idx, x, y, width, height) {
+//     this.frames[idx][8]  = x;
+//     this.frames[idx][9]  = y;
+//     this.frames[idx][10] = width;
+//     this.frames[idx][11] = height;
+//     if(typeof this.coll === 'undefined') {
+//         this.coll = new KaiRect();
+//     }
+//     this.updateCollider();
+// }
 
-KaiSprite.prototype.updateHitBox = function() {
-    if(this.frameIndex >= 0) {
-        this.cx = this.x + this.frames[this.frameIndex][4];
-        this.cy = this.y + this.frames[this.frameIndex][5];
-        this.cwidth  = this.frames[this.frameIndex][6];
-        this.cheight = this.frames[this.frameIndex][7];
-        if(typeof this.coll !== 'undefined') {
-            this.coll.x = this.x + this.frames[this.frameIndex][8];
-            this.coll.y = this.y + this.frames[this.frameIndex][9];
-            this.coll.width  = this.frames[this.frameIndex][10];
-            this.coll.height = this.frames[this.frameIndex][11];
-        }
-    }
+KaiSprite.prototype.updateCollider = function() {
+    let frameIndex = this.frameIndex < 0 ? 0 : this.frameIndex;
+    this.cx = this.x + this.frames[frameIndex][4];
+    this.cy = this.y + this.frames[frameIndex][5];
+    this.cwidth  = this.frames[frameIndex][6];
+    this.cheight = this.frames[frameIndex][7];
+    // if(typeof this.coll !== 'undefined') {
+    //     this.coll.x = this.x + this.frames[index][8];
+    //     this.coll.y = this.y + this.frames[index][9];
+    //     this.coll.width  = this.frames[index][10];
+    //     this.coll.height = this.frames[index][11];
+    // }
 }
 
 KaiSprite.prototype.inBounds = function(x,y) {
     return ( (x >= this.cx) && (x < (this.cx+this.cwidth)) && (y >= this.cy) && (y < (this.cy+this.cheight)));
 }
 
-KaiSprite.prototype.collidesDrawable = function(drawable) {
+KaiSprite.prototype.collidesWith = function(drawable) {
     if( (this.cx + this.cwidth) <= drawable.cx ) return false;
     if( this.cx >= (drawable.cx + drawable.cwidth) ) return false;
     if( (this.cy + this.cheight) <= drawable.cy ) return false;
@@ -666,10 +671,10 @@ KaiNumber.prototype.setValue = function(value) {
         let frame = this.value.charCodeAt(idx) - 48;
         this.width += this.frames[frame][2] + this.spacing;  
     }
-    this.posXY(this.ax,this.ay);
+    this.position(this.ax,this.ay);
 }
 
-KaiNumber.prototype.posXY = function(x,y) {
+KaiNumber.prototype.position = function(x,y) {
     this.x = this.ax = x;
     if(this.centerX) {
         this.x -= (this.width >> 1);
@@ -730,7 +735,7 @@ KaiPath.prototype.nextStep = function() {
             this.vy = this.path[this.idx][2];
         }
     } else {
-        this.sprite.moveXY(this.vx, this.vy);
+        this.sprite.move(this.vx, this.vy);
     }
 }
 
@@ -845,7 +850,7 @@ KaiLayer.prototype.update = function() {
     }
 }
 
-KaiLayer.prototype.posXY = function(x,y) {
+KaiLayer.prototype.position = function(x,y) {
     let lastX = this.x;
     let lastY = this.y;
 
@@ -872,7 +877,7 @@ KaiLayer.prototype.posXY = function(x,y) {
 
     for(var idx=0; idx < this.nDrawables; idx++) {
         let drawable = this.drawables[idx];
-        drawable.moveXY(ofsX, ofsY);
+        drawable.move(ofsX, ofsY);
         drawable.px = drawable.ax - this.x;
         drawable.py = drawable.ay - this.y;
     }    
